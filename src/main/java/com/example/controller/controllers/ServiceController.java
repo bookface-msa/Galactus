@@ -4,33 +4,33 @@ import java.io.IOException;
 import java.util.HashMap;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.example.controller.services.DeployService;
+import com.example.controller.services.DeploymentService;
 import com.example.controller.services.FileStorageService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RestController
-@RequestMapping(path="/v1/service")
+@RequestMapping(path = "/v1/service")
 public class ServiceController {
 
-    public record ServiceMetadata(String name){
+    public record ServiceMetadata(String name) {
+
     }
 
     @Autowired
     FileStorageService fileStorageService;
 
     @Autowired
-    DeployService deployService;
+    DeploymentService deploymentService;
 
-    @PostMapping(path="/deploy")
-    public HashMap<String, String> deployService(@RequestParam("file") MultipartFile file, @RequestParam("data") String metadata) throws IOException{
+    @PostMapping(path = "/deploy")
+    public HashMap<String, String> deployService(@RequestParam("file") MultipartFile file,
+            @RequestParam("data") String metadata) throws IOException {
         // TODO metadata
         ObjectMapper om = new ObjectMapper();
         ServiceMetadata sm = om.readValue(metadata, ServiceMetadata.class);
@@ -38,26 +38,28 @@ public class ServiceController {
         // TODO check magicbytes to validate its a jar file
         String serviceId = fileStorageService.saveFile(file);
         HashMap<String, String> res = new HashMap<>();
-        // TODO call deployService to allocate a server
+
+        deploymentService.deployService(serviceId, file, sm);
+
         // TODO response
         res.put("serviceId", serviceId);
         res.put("serviceName", file.getOriginalFilename());
         return res;
     }
 
-    @PostMapping(path="/deliver")
-    public void deliverSerive(){
+    @PostMapping(path = "/deliver")
+    public void deliverSerive() {
         // TODO
     }
 
-    @PostMapping(path="/update")
-    public void updateService(){
+    @PostMapping(path = "/update")
+    public void updateService() {
         // TODO
     }
 
-    @PostMapping(path="/shutdown")
-    public void shutdownService(){
+    @PostMapping(path = "/shutdown")
+    public void shutdownService() {
         // TODO
     }
-    
+
 }
