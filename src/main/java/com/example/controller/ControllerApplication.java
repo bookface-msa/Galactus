@@ -4,13 +4,13 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
-import com.example.controller.services.DeploymentProperties;
+import com.example.controller.services.LoadBalancerControlProperties;
 import com.example.controller.services.FileStorageProperties;
 
 @SpringBootApplication
 @EnableConfigurationProperties({
 		FileStorageProperties.class,
-		DeploymentProperties.class
+		LoadBalancerControlProperties.class
 })
 public class ControllerApplication {
 

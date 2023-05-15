@@ -2,8 +2,8 @@ package com.example.controller.services;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(prefix = "deploy")
-public class DeploymentProperties {
+@ConfigurationProperties(prefix = "load-balancer-control")
+public class LoadBalancerControlProperties {
     private String HAProxyHostname;
     private int HAProxyPort;
 

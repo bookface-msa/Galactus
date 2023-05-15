@@ -57,8 +57,13 @@ public class ServiceController {
         // TODO
     }
 
-    @PostMapping(path = "/shutdown")
-    public void shutdownService() {
+    @PostMapping(path = "/freeze")
+    public void freezeService() {
+        // TODO
+    }
+
+    @PostMapping(path = "/continue")
+    public void continueService() {
         // TODO
     }
 
