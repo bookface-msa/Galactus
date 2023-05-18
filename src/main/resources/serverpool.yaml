@@ -1,0 +1,6 @@
+pool:
+  ips:
+    - 127.0.0.1:32768
+    - localhost:8091
+    - localhost:8092
+    - localhost:8093

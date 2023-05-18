@@ -24,9 +24,14 @@ public class FileStorageService {
 
     public String saveFile(MultipartFile file) throws IOException{
         String serviceId = UUID.randomUUID().toString();
-        Path targetPath = this.targetDir.resolve(serviceId);
+        Path targetPath = this.targetDir.resolve(serviceId + ".jar");
         Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
         return serviceId;
+    }
+
+    public byte[] getFile(String fileName) throws IOException{
+        Path targetPath = this.targetDir.resolve(fileName);
+        return Files.readAllBytes(targetPath);
     }
 
     public void deleteFile(String fileName){

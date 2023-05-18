@@ -1,0 +1,89 @@
+version: '3'
+
+services:
+  server1:
+    build:
+        context: .
+        dockerfile: Dockerfile
+    container_name: galactus_server1
+    command: /usr/sbin/sshd -D
+    networks:
+      - app_net
+    ports:
+      - 22:22
+
+  server2:
+    container_name: galactus_server2
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: /usr/sbin/sshd -D
+    networks:
+      - app_net
+    ports:
+      - 8092:22
+
+  server3:
+    container_name: galactus_server3
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: /usr/sbin/sshd -D
+    networks:
+      - app_net
+    ports:
+      - 8093:80
+
+  server4:
+    container_name: galactus_server4
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: /usr/sbin/sshd -D
+    networks:
+      - app_net
+    ports:
+      - 8094:80
+
+  server5:
+    container_name: galactus_server5
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: /usr/sbin/sshd -D
+    networks:
+      - app_net
+    ports:
+      - 8095:80
+
+  server6:
+    container_name: galactus_server6
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: /usr/sbin/sshd -D
+    networks:
+      - app_net
+    ports:
+      - 8096:80
+
+  controller:
+    container_name: controller
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: /usr/sbin/sshd -D
+    networks:
+      - app_net
+    ports:
+      - 8989:80
+    depends_on:
+      - server1
+      - server2
+      - server3
+      - server4
+      - server5
+      - server6
+
+networks:
+  app_net:
