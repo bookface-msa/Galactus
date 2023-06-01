@@ -1,0 +1,4 @@
+FROM eclipse-temurin:17-jdk-alpine
+WORKDIR /app
+COPY ./cp_ewomcxwct3af2zh94nh62qnsj.argfile /app/cp_ewomcxwct3af2zh94nh62qnsj.argfile
+EXPOSE 8080

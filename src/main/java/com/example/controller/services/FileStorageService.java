@@ -5,7 +5,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -22,11 +21,14 @@ public class FileStorageService {
         Files.createDirectories(targetDir);
     }
 
-    public String saveFile(MultipartFile file) throws IOException{
-        String serviceId = UUID.randomUUID().toString();
+    public void saveFile(String serviceId, MultipartFile file) throws IOException{
         Path targetPath = this.targetDir.resolve(serviceId + ".jar");
         Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
-        return serviceId;
+    }
+
+    public void savePropsFile(String serviceId, MultipartFile file) throws IOException {
+        Path targetPath = this.targetDir.resolve("props").resolve(serviceId).resolve("app.properties");
+        Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
     }
 
     public byte[] getFile(String fileName) throws IOException{
@@ -34,7 +36,13 @@ public class FileStorageService {
         return Files.readAllBytes(targetPath);
     }
 
-    public void deleteFile(String fileName){
-        // TODO
+    public byte[] getProps(String fileName) throws IOException {
+        Path targePath = this.targetDir.resolve("props").resolve(fileName).resolve("app.properties");
+        return Files.readAllBytes(targePath);
+    }
+
+    public void deleteFile(String fileName) throws IOException{
+        Path targetPath = this.targetDir.resolve(fileName);
+        Files.delete(targetPath);
     }
 }

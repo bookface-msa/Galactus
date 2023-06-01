@@ -23,4 +23,9 @@ public class StaticFileController {
     public @ResponseBody byte[] getServiceJar(@PathVariable("fileName") String fileName) throws IOException{
         return fileStorageService.getFile(fileName);
     }
+
+    @GetMapping(path="/props/{fileName}")
+    public @ResponseBody byte[] getProps(@PathVariable("fileName") String fileName) throws IOException {
+        return fileStorageService.getProps(fileName);
+    }
 }

@@ -1,43 +1,43 @@
 package com.example.controller.services;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.List;
 import java.util.Optional;
-import java.util.Queue;
-import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
-import com.example.controller.config.ServerPoolConfig;
+import com.example.controller.models.ServerMetadata;
+import com.example.controller.repos.ServerRepository;
 
 @Service
+@Scope("singleton")
 public class ServerPool {
-    private Queue<String> readyPool;
-    private Set<String> alloected;
+   
+    public final byte STATUS_FREE = 0;
+    public final byte STATUS_LOCKED = 1;
+    public final byte STATUS_ALLOC = 2;
 
     @Autowired
-    public ServerPool(ServerPoolConfig config){
-        this.readyPool = new LinkedList<>();
-        this.alloected = new HashSet<>();
+    ServerRepository serverRepo;
 
-        // populate the server ready queue
-        // TODO create server entity to wrap ips
-        this.readyPool.addAll(config.getIps());
-    }
-
-    public Optional<String> getServer(){
-        if(this.readyPool.isEmpty()) 
+    public synchronized Optional<ServerMetadata> getServer(){
+        List<ServerMetadata> servers = serverRepo.findByStatus(STATUS_FREE);
+        if(servers.size() == 0)
             return Optional.of(null);
-        String serverIp = this.readyPool.poll();
-        this.alloected.add(serverIp);
-        return Optional.of(serverIp);
+        ServerMetadata server = servers.get(0);
+        server.status = STATUS_LOCKED;
+        return Optional.of(server);
     }
 
-    public void freeServer(String serverIp){
-        // TODO
+    public synchronized void freeServer(ServerMetadata server){
+        server.status = STATUS_FREE;
+        serverRepo.save(server);
+    }
+
+    public synchronized void allocServer(ServerMetadata server){
+        server.status = STATUS_ALLOC;
+        serverRepo.save(server);
     }
 
 }

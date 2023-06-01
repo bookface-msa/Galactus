@@ -1,0 +1,33 @@
+infra:
+  pool:
+    - name: s1
+      ip: server1:22
+      username: root
+      password: mypassword
+    - name: s2
+      ip: server2:22
+      username: root
+      password: mypassword
+    - name: s3
+      ip: server3:22
+      username: root
+      password: mypassword
+    - name: s4
+      ip: server4:22
+      username: root
+      password: mypassword
+    - name: s5
+      ip: server5:22
+      username: root
+      password: mypassword
+
+  resources:
+    - name: rabitmq-1
+      ip: localhost
+      port: 5672
+    - name: haproxy-1
+      ip: localhost
+      port: 9999
+    - name: redis-1
+      ip: localhost
+      port: 6379

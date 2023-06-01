@@ -2,20 +2,22 @@ package com.example.controller.controllers;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.example.controller.services.DeploymentService;
-import com.example.controller.services.FileStorageService;
 import com.example.controller.services.DeploymentService.NoServerAvailableExecption;
-import com.example.controller.config.ServerPoolConfig;
-import com.example.controller.models.ServiceMetadata;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sshtools.common.ssh.SshException;
 
@@ -24,51 +26,60 @@ import com.sshtools.common.ssh.SshException;
 public class ServiceController {
 
     @Autowired
-    FileStorageService fileStorageService;
-
-    @Autowired
     DeploymentService deploymentService;
 
-    @Autowired
-    ServerPoolConfig config;
+    public record DeployServiceRequest(String name, Integer port, Integer maxInstanceCount, String[] deps){}
 
+    @ResponseBody
     @PostMapping(path = "/deploy")
     public HashMap<String, String> deployService(@RequestParam("file") MultipartFile file,
+            @RequestParam("propsFile") MultipartFile propsFile,
             @RequestParam("data") String metadata) throws IOException, NoServerAvailableExecption, NumberFormatException, SshException {
-        // TODO metadata and save it to the db
         ObjectMapper om = new ObjectMapper();
-        ServiceMetadata sm = om.readValue(metadata, ServiceMetadata.class);
-        System.out.println(sm);
-        // TODO check magicbytes to validate its a jar file
-        String serviceId = fileStorageService.saveFile(file);
-        HashMap<String, String> res = new HashMap<>();
-
-        deploymentService.deployService(serviceId, file, sm);
-
+        DeployServiceRequest request = om.readValue(metadata, DeployServiceRequest.class);
+        
+        if(request.name == null || request.port == null || request.maxInstanceCount == null)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "INVALID SERVICE METADATA");
+        
+        var status = deploymentService.deployService(request, file, propsFile);
+        
         // TODO response
-        res.put("serviceId", serviceId);
+        HashMap<String, String> res = new HashMap<>();
+        res.put("status", status.toString());
         res.put("serviceName", file.getOriginalFilename());
         return res;
     }
 
     @PostMapping(path = "/deliver")
-    public void deliverSerive() {
-        // TODO
+    public void deliverSerive(@RequestParam("file") MultipartFile file, @RequestParam("data") String metadata) throws JsonMappingException, JsonProcessingException {
+        ObjectMapper om = new ObjectMapper();
+        DeployServiceRequest request = om.readValue(metadata, DeployServiceRequest.class);
+
+        if (request.name == null || request.port == null || request.maxInstanceCount == null)
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "INVALID SERVICE METADATA");
+
+        // TODO get old service and freeze and then shutdown
+        // TODO deploy a new service with server
     }
 
     @PostMapping(path = "/update")
-    public void updateService() {
-        // TODO
+    public void updateService(@RequestParam("data") String metadata) {
+        // TODO update metadata of the service that could also include updating deps ??
     }
 
-    @PostMapping(path = "/freeze")
-    public void freezeService() {
-        // TODO
+    @PostMapping(path = "/freeze/{serviceName}")
+    public void freezeService(@PathVariable String serviceName) {
+        deploymentService.freezeService(serviceName);
     }
 
-    @PostMapping(path = "/continue")
-    public void continueService() {
-        // TODO
+    @PostMapping(path = "/continue/{serviceId}")
+    public void continueService(@PathVariable String serviceName) {
+        deploymentService.resumeService(serviceName);
+    }
+
+    @PostMapping(path = "/shutdown/{serviceName}")
+    public void shutdownService(@PathVariable String serviceName) throws Exception {
+        deploymentService.shutdownService(serviceName);
     }
 
 }
