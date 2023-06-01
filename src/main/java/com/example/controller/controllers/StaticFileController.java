@@ -38,4 +38,9 @@ public class StaticFileController {
            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "file does not exist");
         }
     }
+
+    @GetMapping(path="/props/{fileName}")
+    public @ResponseBody byte[] getProps(@PathVariable("fileName") String fileName) throws IOException {
+        return fileStorageService.getProps(fileName);
+    }
 }
