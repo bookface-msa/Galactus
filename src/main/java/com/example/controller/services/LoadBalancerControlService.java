@@ -23,10 +23,24 @@ public class LoadBalancerControlService {
         this.HAProxyPort = loadBalancerControlProperties.getHAProxyPort();
     }
 
-    public void addServerToLoadBalancer(String serviceName, String serverName, String serverSocket) {
+    public void addServer(String serviceName, String serverName, String serverSocket) {
         String addServerCommand = constructAddServerCommand(serviceName, serverName, serverSocket);
-
         sendCommandToLoadBalancer(addServerCommand);
+    }
+
+    public void freezeServer(String serviceName, String serverName){
+        String freezeServerCommand = constructFreezeCommand(serviceName, serverName);
+        sendCommandToLoadBalancer(freezeServerCommand);
+    }
+
+    public void unFreezeServer(String serviceName, String serverName) {
+        String unFreezeServerCommand = constructContinueCommand(serviceName, serverName);
+        sendCommandToLoadBalancer(unFreezeServerCommand);
+    }
+
+    public void deleteServer(String serviceName, String serverName){
+        String deleteCommand = constructDeleteCommand(serviceName, serverName);
+        sendCommandToLoadBalancer(deleteCommand);
     }
 
     private void sendCommandToLoadBalancer(String command) {
@@ -59,6 +73,24 @@ public class LoadBalancerControlService {
 
     private String constructAddServerCommand(String serviceName, String serverName, String serverSocket) {
         String serviceServer = String.format("%s/%s", serviceName, serverName);
-        return String.format("%s %s %s", "add server", serviceServer, serverSocket);
+        return String.format("%s %s %s %s", "add server", serviceServer, serverSocket, "enabled");
+    }
+
+    private String constructFreezeCommand(String serviceName, String serverName) {
+        String serviceServer = String.format("%s/%s", serviceName, serverName);
+        // INFO: maint state recieves no requests and performs no health checks
+        return String.format("%s %s %s", "set server", serviceServer, "state maint");
+    }
+
+    private String constructContinueCommand(String serviceName, String serverName) {
+        String serviceServer = String.format("%s/%s", serviceName, serverName);
+        // INFO: maint state recieves no requests and performs no health checks
+        return String.format("%s %s %s", "set server", serviceServer, "state ready");
+    }
+    
+    private String constructDeleteCommand(String serviceName, String serverName) {
+        String serviceServer = String.format("%s/%s", serviceName, serverName);
+        // INFO: maint state recieves no requests and performs no health checks
+        return String.format("%s %s", "del server", serviceServer);
     }
 }

@@ -1,0 +1,32 @@
+
+# TODOs
+- [x] define servivce metadata
+- [x] resources class definition
+- [x] parse metadata and allocate resources for the new service
+- [ ] complete loadbalancer class
+- [ ] cli/galactus-ctl
+- [ ] fininsh the definetion of the infastructure as a docker-compose.yaml
+- [ ] test with two service communicating with redis
+
+# cont.
+- [ ] integerate with the metrics and promethus
+
+# nice to have
+- [ ] add some charts with grafana
+- [ ] compelete the impelemnatation of add/delete/update command feature.
+
+# plan b
+- [ ] dockerize all the services
+- [ ] write a simple kubernetes file to orcasterate the containers
+
+
+- service [implict .ID]: ""
+- jar-path [opt]: /target/*.jar
+- instance-number: 1
+- depends
+    - redis
+    - rabbitMQ
+    - userService
+    - postgresql:1
+
+

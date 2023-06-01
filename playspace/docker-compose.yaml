@@ -10,7 +10,7 @@ services:
     networks:
       - app_net
     ports:
-      - 22:22
+      - 8091:22
 
   server2:
     container_name: galactus_server2
@@ -67,16 +67,47 @@ services:
     ports:
       - 8096:80
 
+  database:
+    container_name: metadb
+    image: postgres:14.1-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=guest
+    networks:
+      - app_net
+    ports:
+      - '5432:5432'
+    volumes: 
+      - ./db:/var/lib/postgresql/data
+
+  haproxy:
+    container_name: haproxy
+    image: haproxy:2.7
+    volumes:
+        - ./haproxy_web_compose/haproxy:/haproxy-override
+        - ./haproxy_web_compose/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    networks:
+      - app_net
+    ports:
+        - "80:80"
+        - "70:70" # haproxy admin console, login with user:pass
+        - "9999:9999"
+
   controller:
     container_name: controller
     build:
       context: .
       dockerfile: Dockerfile
-    command: /usr/sbin/sshd -D
+    entrypoint: ["/bin/bash","-c"]
+    command:
+      - java -jar /app/target/*.jar --spring.config.location=file:///app/target/custom.properties
     networks:
       - app_net
     ports:
-      - 8989:80
+      - 8080:8080
+    volumes:
+      - ./target:/app/target
     depends_on:
       - server1
       - server2
@@ -84,6 +115,8 @@ services:
       - server4
       - server5
       - server6
+      - database
+      - haproxy
 
 networks:
   app_net:
