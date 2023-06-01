@@ -51,34 +51,34 @@ public class ServiceController {
     }
 
     @PostMapping(path = "/deliver")
-    public void deliverSerive(@RequestParam("file") MultipartFile file, @RequestParam("data") String metadata) throws JsonMappingException, JsonProcessingException {
+    public void deliverSerive(@RequestParam("file") MultipartFile file,
+            @RequestParam("propsFile") MultipartFile propsFile,
+            @RequestParam("data") String metadata) throws IOException {
         ObjectMapper om = new ObjectMapper();
         DeployServiceRequest request = om.readValue(metadata, DeployServiceRequest.class);
 
         if (request.name == null || request.port == null || request.maxInstanceCount == null)
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "INVALID SERVICE METADATA");
 
-        // TODO get old service and freeze and then shutdown
-        // TODO deploy a new service with server
+       deploymentService.deliverUpdatetoService(request, file, propsFile);
     }
 
-    @PostMapping(path = "/update")
-    public void updateService(@RequestParam("data") String metadata) {
-        // TODO update metadata of the service that could also include updating deps ??
-    }
+    // @PostMapping(path = "/update")
+    // public void updateService(@RequestParam("data") String metadata) {
+    // }
 
     @PostMapping(path = "/freeze/{serviceName}")
-    public void freezeService(@PathVariable String serviceName) {
+    public void freezeService(@PathVariable("serviceName") String serviceName) {
         deploymentService.freezeService(serviceName);
     }
 
-    @PostMapping(path = "/continue/{serviceId}")
-    public void continueService(@PathVariable String serviceName) {
+    @PostMapping(path = "/continue/{serviceName}")
+    public void continueService(@PathVariable("serviceName") String serviceName) {
         deploymentService.resumeService(serviceName);
     }
 
     @PostMapping(path = "/shutdown/{serviceName}")
-    public void shutdownService(@PathVariable String serviceName) throws Exception {
+    public void shutdownService(@PathVariable("serviceName") String serviceName) throws Exception {
         deploymentService.shutdownService(serviceName);
     }
 

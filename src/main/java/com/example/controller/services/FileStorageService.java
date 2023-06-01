@@ -19,6 +19,7 @@ public class FileStorageService {
         this.targetDir = Paths.get(properties.getUploadDir())
                 .toAbsolutePath().normalize();
         Files.createDirectories(targetDir);
+        Files.createDirectories(targetDir.resolve("props"));
     }
 
     public void saveFile(String serviceId, MultipartFile file) throws IOException{
@@ -27,7 +28,7 @@ public class FileStorageService {
     }
 
     public void savePropsFile(String serviceId, MultipartFile file) throws IOException {
-        Path targetPath = this.targetDir.resolve("props").resolve(serviceId).resolve("app.properties");
+        Path targetPath = this.targetDir.resolve("props").resolve(serviceId+"app.properties");
         Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
     }
 
@@ -37,7 +38,7 @@ public class FileStorageService {
     }
 
     public byte[] getProps(String fileName) throws IOException {
-        Path targePath = this.targetDir.resolve("props").resolve(fileName).resolve("app.properties");
+        Path targePath = this.targetDir.resolve("props").resolve(fileName+"app.properties");
         return Files.readAllBytes(targePath);
     }
 

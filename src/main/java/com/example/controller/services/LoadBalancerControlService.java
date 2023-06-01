@@ -73,7 +73,7 @@ public class LoadBalancerControlService {
 
     private String constructAddServerCommand(String serviceName, String serverName, String serverSocket) {
         String serviceServer = String.format("%s/%s", serviceName, serverName);
-        return String.format("%s %s %s %s", "add server", serviceServer, serverSocket, "enabled maxconn=1000");
+        return String.format("%s %s %s %s", "add server", serviceServer, serverSocket, "enabled");
     }
 
     private String constructFreezeCommand(String serviceName, String serverName) {

@@ -37,7 +37,7 @@ public class ServiceMetadata {
     })
     public Set<ResourceMetadata> resources;
 
-    @OneToMany(targetEntity = ServerMetadata.class, cascade = CascadeType.ALL)
+    @OneToMany(fetch = FetchType.EAGER, targetEntity = ServerMetadata.class, cascade = CascadeType.ALL)
     @JoinColumn(name = "service_id_fk", referencedColumnName = "id")
     public Set<ServerMetadata> servers;
 }
