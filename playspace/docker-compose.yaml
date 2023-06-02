@@ -85,14 +85,56 @@ services:
     container_name: haproxy
     image: haproxy:2.7
     volumes:
-        - ./haproxy_web_compose/haproxy:/haproxy-override
-        - ./haproxy_web_compose/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+        - ./haproxy:/haproxy-override
+        - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     networks:
       - app_net
     ports:
         - "80:80"
         - "70:70" # haproxy admin console, login with user:pass
         - "9999:9999"
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus
+    volumes:
+        - ./prometheus/:/etc/prometheus/
+        - prometheus-data:/prometheus
+    command:
+        - '--config.file=/etc/prometheus/prometheus.yml'
+        - '--web.console.libraries=/etc/prometheus/console_libraries'
+        - '--web.console.templates=/etc/prometheus/consoles'
+        - '--web.enable-lifecycle'
+    networks:
+      - app_net
+    ports:
+        - "9090:9090"
+  
+  alertmanager:
+    container_name: alertmanager
+    image: prom/alertmanager
+    restart: unless-stopped
+    expose:
+        - 9093
+    networks:
+      - app_net
+    ports:
+        - "9093:9093"
+    volumes:
+        - "./alertmanager:/config"
+        - alertmanager-data:/data
+    command: --config.file=/config/alertmanager.yml --log.level=debug
+  
+  grafana:
+    image: grafana/grafana
+    networks:
+      - app_net
+    ports:
+        - 3000:3000
+    restart: unless-stopped
+    volumes:
+        - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+        - grafana-data:/var/lib/grafana
 
   controller:
     container_name: controller
@@ -118,5 +160,11 @@ services:
       - database
       - haproxy
 
+volumes:
+  prometheus-data:
+  alertmanager-data:
+  grafana-data:
+
 networks:
   app_net:
+  
