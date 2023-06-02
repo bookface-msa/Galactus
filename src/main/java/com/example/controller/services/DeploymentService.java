@@ -278,6 +278,7 @@ public class DeploymentService {
             });
         }
 
+        serviceRepo.delete(service);
     }
 
     private void _freezeJob(ServiceMetadata service){

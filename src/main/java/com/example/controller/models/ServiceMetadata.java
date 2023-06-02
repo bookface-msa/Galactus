@@ -29,7 +29,7 @@ public class ServiceMetadata {
     @Column(name = "maxInstanceCount", nullable = true)
     public Integer maxInstanceCount;
 
-    @ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "services_resources_table", joinColumns = {
             @JoinColumn(name = "service_id", referencedColumnName = "id")
     }, inverseJoinColumns = {
@@ -37,7 +37,7 @@ public class ServiceMetadata {
     })
     public Set<ResourceMetadata> resources;
 
-    @OneToMany(fetch = FetchType.EAGER, targetEntity = ServerMetadata.class, cascade = CascadeType.ALL)
+    @OneToMany(fetch = FetchType.EAGER, targetEntity = ServerMetadata.class)
     @JoinColumn(name = "service_id_fk", referencedColumnName = "id")
     public Set<ServerMetadata> servers;
 }
