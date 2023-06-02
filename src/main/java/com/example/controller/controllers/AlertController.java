@@ -37,17 +37,19 @@ public class AlertController {
         logger.info("alertname:" + alertname);
         logger.info("application:" + application);
 
+        String result = "NO ACTION";
         switch (alertname) {
             case "ServiceHighCpuLoad":
-                deploymentService.scaleUpService(application);
+               result =  deploymentService.scaleUpService(application).toString();
                 break;
             case "ServiceLowCpuLoad":
-                deploymentService.scaleDownService(application);
+                result = deploymentService.scaleDownService(application).toString();
                 break;
         }
 
         HashMap<String, Object> res = new HashMap<>();
         res.put("payload", payload);
+        res.put("result", result);
         return res;
     }
 }

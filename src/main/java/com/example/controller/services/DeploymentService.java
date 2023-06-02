@@ -218,11 +218,12 @@ public class DeploymentService {
                 return;
             }
 
-            String serviceAddress = allocatedServer.ipAddresse.split(":")[0] + ":" + service.port;
-            loadBalancerControlService.addServer(
-                    service.name,
-                    allocatedServer.name,
-                    serviceAddress);
+            // String serviceAddress = allocatedServer.ipAddresse.split(":")[0] + ":" + service.port;
+            // loadBalancerControlService.addServer(
+            //         service.name,
+            //         allocatedServer.name,
+            //         serviceAddress);
+            loadBalancerControlService.unFreezeServer(service.name, allocatedServer.name);
 
             serverPool.allocServer(allocatedServer);
             if(service.servers == null)
@@ -250,7 +251,7 @@ public class DeploymentService {
         for (ServerMetadata server : toDelete) {
             _runSSHSession(service, server.ipAddresse, server.username, server.password, cleanUpSSHSteps(null));
             loadBalancerControlService.freezeServer(service.name, server.name);
-            loadBalancerControlService.deleteServer(service.name, server.name);
+            // loadBalancerControlService.deleteServer(service.name, server.name);
             serverPool.freeServer(server);
             service.servers.remove(server);
         }
@@ -270,7 +271,7 @@ public class DeploymentService {
             executor.execute(() -> {
                 _runSSHSession(service, server.ipAddresse, server.username, server.password, cleanUpSSHSteps(null));
                 loadBalancerControlService.freezeServer(service.name, server.name);
-                loadBalancerControlService.deleteServer(service.name, server.name);
+                // loadBalancerControlService.deleteServer(service.name, server.name);
                 serverPool.freeServer(server);
                 service.servers.remove(server);
                 serviceRepo.save(service);
@@ -306,7 +307,7 @@ public class DeploymentService {
         for (ServerMetadata server : service.servers) {
             _runSSHSession(service, server.ipAddresse, server.username, server.password, cleanUpSSHSteps(null));
             loadBalancerControlService.freezeServer(service.name, server.name);
-            loadBalancerControlService.deleteServer(service.name, server.name);
+            // loadBalancerControlService.deleteServer(service.name, server.name);
             serverPool.freeServer(server);
             service.servers.remove(server);
             serviceRepo.save(service);
