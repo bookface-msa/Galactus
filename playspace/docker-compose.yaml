@@ -71,6 +71,7 @@ services:
     container_name: metadb
     image: postgres:14.1-alpine
     restart: always
+    user: postgres
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=guest
@@ -83,7 +84,7 @@ services:
 
   haproxy:
     container_name: haproxy
-    image: haproxy:2.7
+    image: haproxy:2.7  
     volumes:
         - ./haproxy:/haproxy-override
         - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
@@ -136,6 +137,20 @@ services:
         - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
         - grafana-data:/var/lib/grafana
 
+  syslog:
+    image: balabit/syslog-ng:latest
+    container_name: syslog
+    entrypoint: /usr/sbin/syslog-ng
+    command: "-F -edv"
+    volumes:
+      - ./syslog-ng/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf
+      - syslog-ng-logs:/var/log/syslog-logs
+    networks:
+      - app_net
+    ports:
+      - 514:514
+      - 601:601
+
   controller:
     container_name: controller
     build:
@@ -164,6 +179,7 @@ volumes:
   prometheus-data:
   alertmanager-data:
   grafana-data:
+  syslog-ng-logs:
 
 networks:
   app_net:
