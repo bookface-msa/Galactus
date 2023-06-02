@@ -11,7 +11,7 @@ route:
 receivers:
 - name: webhook
   webhook_configs:
-  - url: http://controller:8088/v1/service/alert
+  - url: http://controller:8080/v1/alert/
     send_resolved: false
     # http_config:
     #   bearer_token: your-bearer-token
