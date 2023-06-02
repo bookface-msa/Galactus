@@ -37,19 +37,29 @@ public class AlertController {
 
     @PostMapping(path = "/")
     public HashMap<String, Object> alert(@RequestBody Map<String, Object> payload) {
+        logger.info("Alert, payload: " + payload);
+
         JSONObject alertmanagerMessage = new JSONObject(payload);
         JSONArray alerts = alertmanagerMessage.getJSONArray("alerts");
         JSONObject alert = (JSONObject) alerts.get(0);
         JSONObject alertLabels = alert.getJSONObject("labels");
         String alertname = alertLabels.getString("alertname");
-        // String alerttype = alertLabels.getString("alerttype");
+        String alertStatus = alertmanagerMessage.getString("status");
         String application = alertLabels.getString("application");
 
-        logger.info("Alert, payload: " + payload);
         logger.info("alertname:" + alertname);
         logger.info("application:" + application);
-        // logger.info("alert")
+        logger.info("status: " + alertStatus);
 
+        
+        // resolver
+        if(alertStatus.equals("resolved")){
+            logger.info("alert: "+alertname+" is resolverd");
+            isResolved.put(application+alertname, true);
+            return null;
+        }
+        
+        // firing
         String result = "NO ACTION";
         Function<String, DeploymentStatus> action = null;
         switch (alertname) {
@@ -61,16 +71,16 @@ public class AlertController {
                 break;
         }
 
-        // TODO case 1 active
         if(action != null){
             result = "AM I SCALLING !";
             final Function<String, DeploymentStatus> effictiveAction = action;
             // assuming that the alert will be called once ??
-            isResolved.put(application, false);
+            isResolved.put(application+alertname, false);
             executor.execute(() -> {
                 while(true){
-                    Boolean reloved = isResolved.get(application);
+                    Boolean reloved = isResolved.get(application+alertname);
                     if(reloved == null || reloved == true){
+                        logger.info("background task for"+alertname+" has stopped");
                         break;
                     }
                     effictiveAction.apply(application);
@@ -84,29 +94,9 @@ public class AlertController {
             });
         }
 
-        // TODO case 2 resolverd
-        isResolved.put(application, true);
-
         HashMap<String, Object> res = new HashMap<>();
         res.put("payload", payload);
         res.put("result", result);
         return res;
     }
-
-    // @PostMapping(path = "/resolve")
-    // public HashMap<String, Object> resovle(@RequestBody Map<String, Object> payload) {
-    //     JSONObject alertmanagerMessage = new JSONObject(payload);
-    //     JSONArray alerts = alertmanagerMessage.getJSONArray("alerts");
-    //     JSONObject alert = (JSONObject) alerts.get(0);
-    //     JSONObject alertLabels = alert.getJSONObject("labels");
-    //     String alertname = alertLabels.getString("alertname");
-    //     String application = alertLabels.getString("application");
-
-    //     logger.info("Alert, payload: " + payload);
-    //     logger.info("alertname:" + alertname);
-    //     logger.info("application:" + application);
-
-    //     isResolved.put(application, true);
-    //     return null;
-    // }
 }

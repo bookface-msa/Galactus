@@ -268,16 +268,19 @@ public class DeploymentService {
 
         // run cleanup steps to all servers
         for(ServerMetadata server: service.servers){
-            executor.execute(() -> {
-                _runSSHSession(service, server.ipAddresse, server.username, server.password, cleanUpSSHSteps(null));
-                loadBalancerControlService.freezeServer(service.name, server.name);
-                // loadBalancerControlService.deleteServer(service.name, server.name);
-                serverPool.freeServer(server);
-                service.servers.remove(server);
-                serviceRepo.save(service);
-            });
+            _runSSHSession(service, server.ipAddresse, server.username, server.password, cleanUpSSHSteps(null));
+            loadBalancerControlService.freezeServer(service.name, server.name);
+            // loadBalancerControlService.deleteServer(service.name, server.name);
+            serverPool.freeServer(server);
+            // service.servers.remove(server);
+            // serviceRepo.save(service);
         }
 
+        logger.warn("deleteing service "+ service.id);
+        serviceRepo.flush();
+        service.resources = new HashSet<>();
+        service.servers = new HashSet<>();
+        serviceRepo.saveAndFlush(service);
         serviceRepo.delete(service);
     }
 
