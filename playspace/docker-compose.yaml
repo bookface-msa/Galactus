@@ -90,7 +90,7 @@ services:
     networks:
       - app_net
     ports:
-        - "80:80"
+        - "8077:80"
         - "70:70" # haproxy admin console, login with user:pass
         - "9999:9999"
 

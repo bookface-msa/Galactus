@@ -1,23 +1,23 @@
 infra:
   pool:
     - name: s1
-      ip: 172.20.0.8:22
+      ip: server1:22
       username: root
       password: mypassword
     - name: s2
-      ip: 172.20.0.3:22
+      ip: server2:22
       username: root
       password: mypassword
     - name: s3
-      ip: 172.20.0.6:22
+      ip: server3:22
       username: root
       password: mypassword
     - name: s4
-      ip: 172.20.0.4:22
+      ip: server4:22
       username: root
       password: mypassword
     - name: s5
-      ip: 172.20.0.5:22
+      ip: server5:22
       username: root
       password: mypassword
 
