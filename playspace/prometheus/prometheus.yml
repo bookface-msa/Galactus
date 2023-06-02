@@ -30,6 +30,9 @@ scrape_configs:
 
     static_configs:
       - targets:
-        - 'weba:80'
-        - 'webb:80'
-        - 'webc:80'
+        - 'server1:8080'
+        - 'server2:8080'
+        - 'server3:8080'
+        - 'server4:8080'
+        - 'server5:8080'
+        - 'server6:8080'
