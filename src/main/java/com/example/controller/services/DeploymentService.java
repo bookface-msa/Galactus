@@ -54,6 +54,8 @@ public class DeploymentService {
         SERVICE_DOSNT_EXIST,
         PROCESSING,
         FAILED,
+        SCALED_DOWN,
+        SCALED_UP,
         DONE
     }
 
@@ -107,7 +109,7 @@ public class DeploymentService {
         if (services == null || services.size() == 0)
             return DeploymentStatus.SERVICE_DOSNT_EXIST;
         var service = services.get(0);
-        if(service.servers.size() == 1) return DeploymentStatus.DONE;
+        if(service.servers.size() == 1) return DeploymentStatus.SCALED_DOWN;
 
         this.executor.execute(() -> {
             logger.info("Scaleing down service:" + service.name);
@@ -122,6 +124,8 @@ public class DeploymentService {
             return DeploymentStatus.SERVICE_DOSNT_EXIST;
         
         var service = services.get(0);
+        if(service.maxInstanceCount != null && service.maxInstanceCount == service.servers.size())
+            return DeploymentStatus.SCALED_UP;
         this.executor.execute(() -> {
             logger.info("Scaleing up service:"+service.name);
             _deploymentJob(service);

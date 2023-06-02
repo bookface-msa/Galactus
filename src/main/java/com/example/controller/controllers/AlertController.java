@@ -6,7 +6,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.Function;
 
 import org.json.JSONObject;
@@ -14,7 +16,6 @@ import org.json.JSONArray;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.autoconfigure.security.oauth2.resource.IssuerUriCondition;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -28,15 +29,17 @@ import com.example.controller.services.DeploymentService.DeploymentStatus;
 public class AlertController {
 
     Logger logger = LoggerFactory.getLogger(DeploymentService.class);
-    private static Executor executor = Executors.newFixedThreadPool(30);
-    private static Map<String, Boolean> isResolved = Collections.synchronizedMap(new HashMap<>());
+    private static ExecutorService executor = Executors.newFixedThreadPool(10);
+    private static Map<String, Boolean> isScaling = Collections.synchronizedMap(new HashMap<>());
+    private static Map<String, Future<?>> scaleRoutine = Collections.synchronizedMap(new HashMap<>());
+
     private static final int SLEEP_DURATION = 20000;
 
     @Autowired
     DeploymentService deploymentService;
 
     @PostMapping(path = "/")
-    public HashMap<String, Object> alert(@RequestBody Map<String, Object> payload) {
+    public String alert(@RequestBody Map<String, Object> payload) {
         logger.info("Alert, payload: " + payload);
 
         JSONObject alertmanagerMessage = new JSONObject(payload);
@@ -50,53 +53,56 @@ public class AlertController {
         logger.info("alertname:" + alertname);
         logger.info("application:" + application);
         logger.info("status: " + alertStatus);
-
         
-        // resolver
-        if(alertStatus.equals("resolved")){
-            logger.info("alert: "+alertname+" is resolverd");
-            isResolved.put(application+alertname, true);
-            return null;
-        }
-        
-        // firing
-        String result = "NO ACTION";
-        Function<String, DeploymentStatus> action = null;
+        // choose action 
         switch (alertname) {
             case "ServiceHighCpuLoad":
-               action =  deploymentService::scaleUpService;
+                isScaling.put(application, true);
                 break;
             case "ServiceLowCpuLoad":
-                action = deploymentService::scaleDownService;
+                isScaling.put(application, false);
                 break;
+            default:
+                return "NOP !";
         }
 
-        if(action != null){
-            result = "AM I SCALLING !";
-            final Function<String, DeploymentStatus> effictiveAction = action;
-            // assuming that the alert will be called once ??
-            isResolved.put(application+alertname, false);
-            executor.execute(() -> {
-                while(true){
-                    Boolean reloved = isResolved.get(application+alertname);
-                    if(reloved == null || reloved == true){
-                        logger.info("background task for"+alertname+" has stopped");
-                        break;
-                    }
-                    effictiveAction.apply(application);
-                    try {
-                        Thread.sleep(SLEEP_DURATION);
-                    } catch (InterruptedException e) {
-                       logger.error("interrupted", e);
-                       break;
-                    }
+        Future<?> _future = scaleRoutine.get(application);
+        if(_future != null && ! _future.isDone() ){
+            return "JUMP !";
+        }
+        // assuming that the alert will be called once ??
+        Future<?> futuer = executor.submit(() -> {
+            while(true){
+                Boolean scaling = isScaling.get(application+alertname);
+
+                // do scale
+                DeploymentStatus status = DeploymentStatus.DONE;
+                if(scaling == true){
+                    status = deploymentService.scaleUpService(application);
+                }else {
+                    status = deploymentService.scaleDownService(application);
                 }
-            });
-        }
+                
+                // can't scale more -> return thread to pool
+                if(
+                    (status == DeploymentStatus.SCALED_DOWN && isScaling.get(application) == false)||
+                    (status == DeploymentStatus.SCALED_UP && isScaling.get(application) == true)
+                ){
+                    logger.info("stop scaling");
+                    return;
+                }
 
-        HashMap<String, Object> res = new HashMap<>();
-        res.put("payload", payload);
-        res.put("result", result);
-        return res;
+                // some interrupt happend !
+                try {
+                    Thread.sleep(SLEEP_DURATION);
+                } catch (InterruptedException e) {
+                    logger.error("interrupted", e);
+                    return;
+                }
+            }
+        });
+        scaleRoutine.put(application, futuer);
+
+        return "AM I SCALING!";
     }
 }

@@ -42,6 +42,11 @@ public class FileStorageService {
         return Files.readAllBytes(targePath);
     }
 
+    public byte[] getMisc(String fileName) throws IOException {
+        Path targePath = this.targetDir.resolve("props").resolve(fileName);
+        return Files.readAllBytes(targePath);
+    }
+
     public void deleteFile(String fileName) throws IOException{
         Path targetPath = this.targetDir.resolve(fileName);
         Files.delete(targetPath);
