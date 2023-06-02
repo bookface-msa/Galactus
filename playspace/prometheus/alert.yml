@@ -1,0 +1,19 @@
+groups:
+  - name: DemoAlerts
+    rules:
+      - alert: ServiceHighCpuLoad
+        expr: sum by (application) (system_cpu_usage) / count by (application) (system_cpu_usage) > 0.7
+        for: 10s
+        labels:
+          severity: warning
+        annotations:
+          summary: Host high CPU load (instance {{ $labels.instance }})
+          description: "CPU load is > 70%\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"
+      - alert: ServiceLowCpuLoad
+        expr: sum by (application) (system_cpu_usage) / count by (application) (system_cpu_usage) < 0.5
+        for: 10s
+        labels:
+          severity: warning
+        annotations:
+          summary: Host Low CPU load (instance {{ $labels.instance }})
+          description: "CPU load is < 50%\n  VALUE = {{ $value }}\n  LABELS = {{ $labels }}"

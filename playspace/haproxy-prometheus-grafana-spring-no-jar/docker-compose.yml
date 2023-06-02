@@ -1,0 +1,74 @@
+# This will start a haproxy and three web services. haproxy will act as a loadbalancer.
+# Authors: yeasy.github.com
+# Date: 2015-11-15
+
+version: "3.9"
+services:
+    weba:
+        build: ./web
+        expose:
+            - 80
+    webb:
+        build: ./web
+        expose:
+            - 80
+    webc:
+        build: ./web
+        expose:
+            - 80
+    controller:
+        container_name: controller
+        build: ./controller
+        expose: 
+            - 8088
+        ports:
+            - "8088:8088"
+    haproxy:
+        container_name: haproxy
+        image: haproxy
+        volumes:
+            - ./haproxy:/haproxy-override
+            - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+        expose:
+            - 9999
+        ports:
+            - "80:80"
+            - "8404:8404" # haproxy admin console, login with user:pass
+            # - "9999:9999" # haproxy socket
+    prometheus:
+        container_name: prometheus
+        image: prom/prometheus
+        volumes:
+            - ./prometheus/:/etc/prometheus/
+            - prometheus-data:/prometheus
+        command:
+            - '--config.file=/etc/prometheus/prometheus.yml'
+            - '--web.console.libraries=/etc/prometheus/console_libraries'
+            - '--web.console.templates=/etc/prometheus/consoles'
+            - '--web.enable-lifecycle'
+        ports:
+            - "9090:9090"
+    alertmanager:
+        container_name: alertmanager
+        image: prom/alertmanager
+        restart: unless-stopped
+        expose:
+            - 9093
+        ports:
+            - "9093:9093"
+        volumes:
+            - "./alertmanager:/config"
+            - alertmanager-data:/data
+        command: --config.file=/config/alertmanager.yml --log.level=debug
+    grafana:
+        image: grafana/grafana
+        ports:
+            - 3000:3000
+        restart: unless-stopped
+        volumes:
+            - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+            - grafana-data:/var/lib/grafana
+volumes:
+  prometheus-data:
+  alertmanager-data:
+  grafana-data:
