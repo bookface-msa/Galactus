@@ -5,6 +5,7 @@ FROM ubuntu:22.04
 RUN apt-get update && apt-get install -y openssh-server
 RUN apt install -y openjdk-17-jre
 RUN mkdir /var/run/sshd
+RUN mkdir /root/certs
 RUN echo 'root:mypassword' | chpasswd
 # RUN sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
 # RUN echo "PermitRootLogin yes" >> /etc/ssh/sshd_config
