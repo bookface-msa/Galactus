@@ -73,7 +73,7 @@ public class AlertController {
         // assuming that the alert will be called once ??
         Future<?> futuer = executor.submit(() -> {
             while(true){
-                Boolean scaling = isScaling.get(application+alertname);
+                Boolean scaling = isScaling.get(application);
 
                 // do scale
                 DeploymentStatus status = DeploymentStatus.DONE;
