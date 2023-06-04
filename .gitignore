@@ -37,6 +37,10 @@ out
 overridedb.*
 target
 db
+db-user
+data-user
+data-content
+certs
 .flattened-pom.xml
 secrets.yml
 .gradletasknamecache
