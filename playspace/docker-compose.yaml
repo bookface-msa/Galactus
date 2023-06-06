@@ -7,6 +7,8 @@ services:
         dockerfile: Dockerfile
     container_name: galactus_server1
     command: /usr/sbin/sshd -D
+    volumes:
+      - ./certs:/root/certs
     networks:
       - app_net
     ports:
@@ -18,6 +20,8 @@ services:
       context: .
       dockerfile: Dockerfile
     command: /usr/sbin/sshd -D
+    volumes:
+      - ./certs:/root/certs
     networks:
       - app_net
     ports:
@@ -29,6 +33,8 @@ services:
       context: .
       dockerfile: Dockerfile
     command: /usr/sbin/sshd -D
+    volumes:
+      - ./certs:/root/certs
     networks:
       - app_net
     ports:
@@ -40,6 +46,8 @@ services:
       context: .
       dockerfile: Dockerfile
     command: /usr/sbin/sshd -D
+    volumes:
+      - ./certs:/root/certs
     networks:
       - app_net
     ports:
@@ -51,6 +59,8 @@ services:
       context: .
       dockerfile: Dockerfile
     command: /usr/sbin/sshd -D
+    volumes:
+      - ./certs:/root/certs
     networks:
       - app_net
     ports:
@@ -62,15 +72,29 @@ services:
       context: .
       dockerfile: Dockerfile
     command: /usr/sbin/sshd -D
+    volumes:
+      - ./certs:/root/certs
     networks:
       - app_net
     ports:
       - 8096:80
+  
+  server7:
+    container_name: galactus_server7
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: /usr/sbin/sshd -D
+    networks:
+      - app_net
+    ports:
+      - 8098:80
 
   database:
     container_name: metadb
     image: postgres:14.1-alpine
     restart: always
+    user: postgres
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=guest
@@ -81,18 +105,157 @@ services:
     volumes: 
       - ./db:/var/lib/postgresql/data
 
-  haproxy:
-    container_name: haproxy
-    image: haproxy:2.7
-    volumes:
-        - ./haproxy_web_compose/haproxy:/haproxy-override
-        - ./haproxy_web_compose/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+  mongodb-user:
+    image: mongo
+    container_name: mongodb-user
     networks:
       - app_net
     ports:
-        - "80:80"
+      - 27017:27017
+    volumes:
+      - ./data-user:/data
+
+  mongo-express-user:
+    image: mongo-express
+    container_name: mongo-express-user
+    restart: always
+    environment:
+      ME_CONFIG_MONGODB_SERVER: mongodb-user
+      # ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      # ME_CONFIG_MONGODB_ADMINPASSWORD: pass
+    networks:
+      - app_net
+    ports:
+      - 8081:8081
+  
+  database-user:
+    container_name: database-user
+    image: postgres:14.1-alpine
+    restart: always
+    # user: postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=guest
+    networks:
+      - app_net
+    ports:
+      - '5433:5432'
+    volumes: 
+      - ./db-user:/var/lib/postgresql/data
+
+  mongodb-content:
+    image: mongo
+    container_name: mongodb-content
+    networks:
+      - app_net
+    ports:
+      - 27018:27017
+    volumes:
+      - ./data-content:/data
+    
+  elastic-search:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.7.1
+    container_name: elastic-search
+    # volumes:
+    #   - ./certs:/usr/share/elasticsearch/config/certs
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    mem_reservation: "1024M"
+    mem_limit: "2048M"
+    ports:
+      - 9200:9200
+    networks:
+      - elastic
+      - app_net
+    
+  rabbitmq1:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq1
+    ports:
+      - 5672:5672
+      - 15672:15672
+    networks:
+      - rabbitmq_go_net
+      - app_net
+
+  redis:
+    image: redis:6.2-alpine
+    container_name: redis
+    restart: always
+    ports:
+      - 6379:6379
+    networks:
+      - app_net
+
+  haproxy:
+    container_name: haproxy
+    image: haproxy:2.7  
+    volumes:
+        - ./haproxy:/haproxy-override
+        - ./haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    networks:
+      - app_net
+    ports:
+        - "8077:80"
         - "70:70" # haproxy admin console, login with user:pass
         - "9999:9999"
+
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus
+    volumes:
+        - ./prometheus/:/etc/prometheus/
+        - prometheus-data:/prometheus
+    command:
+        - '--config.file=/etc/prometheus/prometheus.yml'
+        - '--web.console.libraries=/etc/prometheus/console_libraries'
+        - '--web.console.templates=/etc/prometheus/consoles'
+        - '--web.enable-lifecycle'
+    networks:
+      - app_net
+    ports:
+        - "9090:9090"
+  
+  alertmanager:
+    container_name: alertmanager
+    image: prom/alertmanager
+    restart: unless-stopped
+    expose:
+        - 9093
+    networks:
+      - app_net
+    ports:
+        - "9093:9093"
+    volumes:
+        - "./alertmanager:/config"
+        - alertmanager-data:/data
+    command: --config.file=/config/alertmanager.yml --log.level=debug
+  
+  grafana:
+    image: grafana/grafana
+    networks:
+      - app_net
+    ports:
+        - 3000:3000
+    restart: unless-stopped
+    volumes:
+        - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+        - grafana-data:/var/lib/grafana
+
+  syslog:
+    image: balabit/syslog-ng:latest
+    container_name: syslog
+    entrypoint: /usr/sbin/syslog-ng
+    command: "-F -edv"
+    volumes:
+      - ./syslog-ng/syslog-ng.conf:/etc/syslog-ng/syslog-ng.conf
+      - syslog-ng-logs:/var/log/syslog-logs
+    networks:
+      - app_net
+    ports:
+      - 514:514
+      - 601:601
 
   controller:
     container_name: controller
@@ -115,8 +278,29 @@ services:
       - server4
       - server5
       - server6
+      - server7
       - database
       - haproxy
+      - rabbitmq1
+      - elastic-search
+      - redis
+      - syslog
+      - grafana
+      - alertmanager
+      - prometheus
+      - mongodb-user
+      - mongo-express-user
+      - database-user
+      - mongodb-content
+
+volumes:
+  prometheus-data:
+  alertmanager-data:
+  grafana-data:
+  syslog-ng-logs:
 
 networks:
   app_net:
+  elastic:
+  rabbitmq_go_net:
+  

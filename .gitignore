@@ -41,6 +41,10 @@ db-user
 data-user
 data-content
 certs
+data-user
+db-user
+certs
+data-content
 .flattened-pom.xml
 secrets.yml
 .gradletasknamecache

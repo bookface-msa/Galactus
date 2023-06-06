@@ -2,6 +2,7 @@ package com.example.controller.services;
 
 import java.io.IOException;
 import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -53,6 +54,8 @@ public class DeploymentService {
         SERVICE_DOSNT_EXIST,
         PROCESSING,
         FAILED,
+        SCALED_DOWN,
+        SCALED_UP,
         DONE
     }
 
@@ -105,8 +108,9 @@ public class DeploymentService {
         var services = serviceRepo.findByName(serviceName);
         if (services == null || services.size() == 0)
             return DeploymentStatus.SERVICE_DOSNT_EXIST;
-
         var service = services.get(0);
+        if(service.servers.size() == 1) return DeploymentStatus.SCALED_DOWN;
+
         this.executor.execute(() -> {
             logger.info("Scaleing down service:" + service.name);
             _scaleDownJob(service);
@@ -120,9 +124,44 @@ public class DeploymentService {
             return DeploymentStatus.SERVICE_DOSNT_EXIST;
         
         var service = services.get(0);
+        if(service.maxInstanceCount != null && service.maxInstanceCount == service.servers.size())
+            return DeploymentStatus.SCALED_UP;
         this.executor.execute(() -> {
             logger.info("Scaleing up service:"+service.name);
             _deploymentJob(service);
+        });
+        return DeploymentStatus.PROCESSING;
+    }
+
+    public DeploymentStatus deliverUpdatetoService(DeployServiceRequest metadata, MultipartFile file, MultipartFile propsFile) throws IOException {
+        var services = serviceRepo.findByName(metadata.name());
+        if (services == null || services.size() == 0)
+            return DeploymentStatus.SERVICE_DOSNT_EXIST;
+
+        String[] deps = metadata.deps();
+        var depsFound = new HashSet<ResourceMetadata>();
+        if (deps != null && deps.length != 0)
+            for (String depName : deps) {
+                var resource = resourceRepo.findByName(depName);
+                if (resource.size() == 0)
+                    return DeploymentStatus.INVALID_DEPS;
+                else
+                    depsFound.add(resource.get(0));
+            }
+
+        var service = services.get(0);
+        service.name = metadata.name();
+        service.port = metadata.port();
+        service.maxInstanceCount = metadata.maxInstanceCount();
+        service.resources = depsFound;
+        serviceRepo.saveAndFlush(service);
+
+        fileStorageService.saveFile(service.id, file);
+        fileStorageService.savePropsFile(service.id, propsFile);
+
+        this.executor.execute(() -> {
+            logger.info("Delivering update to service:" + service.name);
+            _deliverJob(service);
         });
         return DeploymentStatus.PROCESSING;
     }
@@ -175,7 +214,7 @@ public class DeploymentService {
                     allocatedServer.ipAddresse,
                     allocatedServer.username,
                     allocatedServer.password,
-                    deploymentSSHSteps(allocatedServer.ipAddresse));
+                    deploymentSSHSteps(service.id));
 
             if(res == SSHStepsStatus.FAILED){
                 allocatedServer.deploymentStatus = DeploymentStatus.FAILED.toString();
@@ -183,12 +222,16 @@ public class DeploymentService {
                 return;
             }
 
-            loadBalancerControlService.addServer(
-                    service.name,
-                    allocatedServer.name,
-                    allocatedServer.ipAddresse);
+            // String serviceAddress = allocatedServer.ipAddresse.split(":")[0] + ":" + service.port;
+            // loadBalancerControlService.addServer(
+            //         service.name,
+            //         allocatedServer.name,
+            //         serviceAddress);
+            loadBalancerControlService.unFreezeServer(service.name, allocatedServer.name);
 
             serverPool.allocServer(allocatedServer);
+            if(service.servers == null)
+                service.servers = new HashSet<>();
             service.servers.add(allocatedServer);
             serviceRepo.save(service);
         } catch (NoServerAvailableExecption e) {
@@ -196,25 +239,53 @@ public class DeploymentService {
         }
     }
 
+    private void _deliverJob(ServiceMetadata service) {
+        if (service.servers == null)
+            return;
+        Set<ServerMetadata> toDelete = new HashSet<>();
+        int ServerNum = service.servers.size();
+
+        for(ServerMetadata server: service.servers)
+            toDelete.add(server);
+
+        while(ServerNum-->0)
+            _deploymentJob(service);
+        
+        // put all the server in ready mode
+        for (ServerMetadata server : toDelete) {
+            _runSSHSession(service, server.ipAddresse, server.username, server.password, cleanUpSSHSteps(null));
+            loadBalancerControlService.freezeServer(service.name, server.name);
+            // loadBalancerControlService.deleteServer(service.name, server.name);
+            serverPool.freeServer(server);
+            service.servers.remove(server);
+        }
+        serviceRepo.save(service);
+    }
+
     private void _shutdownJob(ServiceMetadata service){
         if(service.servers == null) return;
         
         // put all the server in maint mode
         for(ServerMetadata server: service.servers){
-            loadBalancerControlService.freezeServer(server.name, service.name);
+            loadBalancerControlService.freezeServer(service.name, server.name);
         }
 
         // run cleanup steps to all servers
         for(ServerMetadata server: service.servers){
-            executor.execute(() -> {
-                _runSSHSession(service, server.ipAddresse, server.username, server.password, cleanUpSSHSteps(null));
-                serverPool.freeServer(server);
-                loadBalancerControlService.deleteServer(service.name, server.name);
-                service.servers.remove(server);
-                serviceRepo.save(service);
-            });
+            _runSSHSession(service, server.ipAddresse, server.username, server.password, cleanUpSSHSteps(null));
+            loadBalancerControlService.freezeServer(service.name, server.name);
+            // loadBalancerControlService.deleteServer(service.name, server.name);
+            serverPool.freeServer(server);
+            // service.servers.remove(server);
+            // serviceRepo.save(service);
         }
 
+        logger.warn("deleteing service "+ service.id);
+        serviceRepo.flush();
+        service.resources = new HashSet<>();
+        service.servers = new HashSet<>();
+        serviceRepo.saveAndFlush(service);
+        serviceRepo.delete(service);
     }
 
     private void _freezeJob(ServiceMetadata service){
@@ -222,7 +293,7 @@ public class DeploymentService {
         
         // put all the server in maint mode
         for (ServerMetadata server : service.servers) {
-            loadBalancerControlService.freezeServer(server.name, service.name);
+            loadBalancerControlService.freezeServer(service.name, server.name);
         }
     }
 
@@ -232,7 +303,7 @@ public class DeploymentService {
 
         // put all the server in ready mode
         for (ServerMetadata server : service.servers) {
-            loadBalancerControlService.unFreezeServer(server.name, service.name);
+            loadBalancerControlService.unFreezeServer(service.name, server.name);
         }
     }
 
@@ -242,7 +313,9 @@ public class DeploymentService {
 
         // put all the server in ready mode
         for (ServerMetadata server : service.servers) {
-            loadBalancerControlService.deleteServer(server.name, service.name);
+            _runSSHSession(service, server.ipAddresse, server.username, server.password, cleanUpSSHSteps(null));
+            loadBalancerControlService.freezeServer(service.name, server.name);
+            // loadBalancerControlService.deleteServer(service.name, server.name);
             serverPool.freeServer(server);
             service.servers.remove(server);
             serviceRepo.save(service);
@@ -265,19 +338,22 @@ public class DeploymentService {
 
                     ExpectShell shell = new ExpectShell(this);
 
-                    var s = shell.executeCommand("rm -rf ./service && mkdir service");
-                    var ss = IOUtils.readStringFromStream(s.getInputStream(), "utf-8");
-                    System.out.println("HERE1" + s.getExitCode() + " " + ss);
+                    // var s = shell.executeCommand("rm -rf ./service && mkdir service");
+                    // var ss = IOUtils.readStringFromStream(s.getInputStream(), "utf-8");
+                    // System.out.println("HERE1" + s.getExitCode() + " " + ss);
                     for(String step : steps){
+                        logger.info("running command: "+step);
                         ShellProcess shellProcess = shell.executeCommand(step);
+                        String commandOutput = IOUtils.readStringFromStream(shellProcess.getInputStream(), "utf-8");
+                        logger.info("command output: " + commandOutput);
                         int exitCode = shellProcess.getExitCode();
+                        // System.out.println("HEER\n\n\n"+exitCode);
                         if(exitCode != 0){
-                            String commandOutput = IOUtils.readStringFromStream(shellProcess.getInputStream(), "utf-8");
                             logger.error(
-                                "Error while executing step:"+step+"on server:"+host+" output:"+commandOutput, 
+                                "Error while executing step:"+step+" on server:"+host+" output:"+commandOutput, 
                                 getLastError()
                             );                
-                            throw new SshException("Couldn't execute step:"+step, getLastError());
+                            throw new IOException("Couldn't execute step:"+step, getLastError());
                         }
                     }
                 }
@@ -293,9 +369,10 @@ public class DeploymentService {
             "rm -rf ./service && mkdir service",
             "cd service",
             "wget -O service.jar http://controller:8080/v1/source/"+serviceId+".jar",
-            "wget -O app.properities http://controller:8080/v1/source/props/"+serviceId+".jar",
+            "wget -O app.properties http://controller:8080/v1/source/props/"+serviceId,
             "echo Done:$(date) >> releases.txt",
-            "java -jar service.jar --spring.config.location=app.properities & disown",
+            "java -jar service.jar --spring.config.location=file://$(pwd)/app.properties & disown",
+            "ps -aux",
         };
     }
 
